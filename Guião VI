@@ -1,0 +1,175 @@
+; ******************************************************************************
+; (1A) comentar o codigo assembly
+int dw_loop(int x,int y,int n){
+do {
+	x+=n;
+	y*=n;
+	n--;
+}	while ((n>0) & (yzn)); /*O operador usado é o E lógico '&' e não a 
+return x;							conjunção '&&' */
+}
+
+
+1  movl 8(%ebp),%esi  ; esi = M[ebp+8]  = x (1ºargumento da função)
+2  movl 12(%ebp),%ebx ; ebx = M[ebp+12] = y (2ºargumento da função)
+3  movl 16(%ebp),%ecx ; ecx = M[ebp+16] = n (3ºargumento da função)
+4  .p2align 4,,7      ; alinha o código na memória para otimizar a utilização da cache
+5  .L6:               ; Corpo do Ciclo
+6  imull %ecx,%ebx    ; ebx = ebx * ecx <=> y = y * n
+7  addl %ecx,%esi     ; esi = esi + ecx <=> x = x + n
+8  decl %ecx          ; n--
+9  testl %ecx,%ecx    ; ecx & ecx <=> n & n (=n) -> altera as flags
+10 setg %al           ; se n>0 então al=1 senão al=0 
+11 cmpl %ecx,%ebx     ; ebx - ecx <=> y-n -> flags
+12 setl %dl           ; se y-n < 0 <=> y<n então dl=1 senão dl=0
+13 andl %edx,%eax     ; eax = (n>0) & (y<n)
+14 testb $1,%al       ; al & 1 -> flags
+15 jne .L6            ; se al&1=bit0(al)!= 0 salta <=> se (n>0) && (y<n)salta para CORPO
+
+; (1B) Registos utilizados
+
+-------   --------------------------  -------------
+Registo   Variável                    Valor inicial
+-------   --------------------------  -------------
+ esi	  x                            x 
+ ebx      y                            y
+ ecx      n                            n
+ al       (calculos intermedios)       n>0
+ dl       (calculos intermedios)       y<n
+        
+  
+-------   --------------------------  -------------
+
+; (1C) teste e corpo do ciclo em C e assembly
+
+CORPO:em C linhas 4 e 6 e linhas 6 e 8 no assembly
+TESTE: linha 7 em C e linhas 9 a 15 em assembly
+
+; ******************************************************************************
+; (2A) comentar o código assembly
+
+int loop_while(inta a, int b){
+	int i=0;
+	int result =a;
+	while(i<256){
+	result +=A;
+	a-=b;
+	i+=b;
+	}
+return result; 
+}
+
+1 movl 8(%ebp),%eax   ; eax = M[ebp+8]  = a (1ºargumento da função)
+2 movl 12(%ebp),%ebx  ; ebx = M[ebp+12]  = b (2ºargumento da função)
+3 xorl %ecx,%ecx      ; ecx = ecx OU-EXCLUSIVO ecx = 0 <=> i=0
+4 movl %eax,%edx      ; edx = a <=> result = a
+5 .p2align 4,,7       ; alinha o código na memória para otimizar a utilização da cache
+6 .L5:                ;CORPO CICLO 
+7 addl %eax,%edx      ; result = result + a
+8 subl %ebx,%eax      ; a = a - b 
+9 addl %ebx,%ecx      ; i = i + b
+10 cmpl $255,%ecx     ; ecx - 255 <=> i - 255 -> flags
+11 jle .L5            ; salta se i-255<=0 <=> i<256 salta para CORPO
+12 movl %edx, %eax    ; eax = result (prepara o retorno)
+
+; (2B) Registos utilizados
+
+------- --------------------------  -------------
+Registo Variável                    Valor inicial
+------- --------------------------  -------------
+ eax    a                           a
+ ebx    b                           b
+ ecx    i                           0
+ edx    result                      a
+
+   
+    
+         
+------- --------------------------  -------------
+
+; (2C) teste e corpo do ciclo em C e assembly
+
+CORPO:em C linhas 6 a 8 e linhas 7 a 9 no assembly
+TESTE: linha 5 em C e linhas 10 e 11 em assembly
+ 
+
+ 
+
+; (2D) Otimizações feitas pelo compilador
+
+*  colocar o teste do ciclo no fim do corpo em vez de à cabeça, porque i=0 na 1ªiteração o teste dá sempre verdadeiro 0 < 256!!
+* usar XOR(xor ecx,ecx - 2 bytes) para colocar ecx a zero em vez de movl $0, %ecx(5/6bytes)
+* colocar todas as variáveis em registo, torna o código mais rápido
+
+; ******************************************************************************
+; (3) apontadores: Considere que o apontador para o início do vector S 
+;     (do tipo short int) e o índice i (do tipo int) estação armazenados 
+;     nos registos %edx e %ecx. Complete a tabela:
+
+---------   -------------    -----------------------------   ----------------------------------------
+Expressão   Tipo de Dados    Valor                           Instrução que guarda resultado em eax/ax
+---------   -------------    -----------------------------   ----------------------------------------
+S+1         short *          S+1*2                           leal 2(%edx),%eax
+S[3]        short            M[S+3*2]=M[S+6]                 movw 6(&edx),%eax ; movw = 16bits
+&S[i]       short *          S+i*2                           leal (%edx,%ecx,2),%eax
+S[4*i+1]    short            M[S+(4*i+1)*2]=M[S+8*i+2]       movw 2(%edx,%ecx,8),%ax
+S+i-5       short *          S+(i-5)*2 = S+i*2-10            leal -10(%edx,%ecx,2),%eax
+---------   -------------    -----------------------------   ----------------------------------------
+
+; ******************************************************************************
+; (4) estruturas: considere-se a funçãoo sp_init (com algumas expressões omitidas)
+;
+; struct prob {
+;    int *p;
+;    struct {
+;        int x;
+;        int y;
+;    } s;
+;    struct prob *next;
+; };
+;
+; void sp_init(struct prob *sp)
+; {
+;    sp->s.x  = _________ ;
+;    sp->p    = _________ ;
+;    sp->next = _________ ;
+; }
+
+; (4A) Quantos bytes são necessários para representar a estrutura?
+		next    (apontador 4 bytes)    +12
+		s.y     (int 4 bytes)          +8
+		s.x     (int 4 bytes)          +4
+sp--->  p       (apontador 4 bytes)   sp+0
+ 
+ 16 bytes
+
+       
+
+; (4B) Qual o valor do deslocamento em relação ao inÃ­cio do vetor 
+;      (em número de bytes) de cada campo?
+
+Campo   Deslocamento
+ p      0
+ s.x    4
+ s.y    8
+ next   12
+
+; (4C) Apos compilar sp_init, o código de montagem que lhe corresponde é o seguinte:
+
+movl 8(%ebp),%eax  ; eax=M[ebp+8] = sp (1ºargumento da função)
+movl 8(%eax),%edx  ; edx=M[eax+8] = sp-> s.y (2ºargumento da função)
+movl  %edx,4(%eax) ; M[sp+4] = sp->s.y <=> sp->s.x = sp->s.y
+leal 4(%eax),%edx  ; edx= &M[sp+4] = &sp->s.x
+movl %edx,(%eax)   ; sp->p = &sp->s.x
+movl %eax,12(%eax) ; M[sp+12] = sp->p <=> sp->next = sp->p
+
+Preencha as expressões em falta no código C da função.
+
+void sp_init(struct prob *sp)
+{
+sp->s.x  = sp->s.y ;
+sp->p    = &sp->s.x ;
+sp->next = sp->p ;
+}
+
+; ******************************************************************************
